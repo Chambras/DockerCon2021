@@ -1,0 +1,154 @@
+# Adding last command execution time
+# source: https://jakemccrary.com/blog/2015/05/03/put-the-last-commands-run-time-in-your-bash-prompt/
+# https://stackoverflow.com/a/34812608
+timer_now() {
+  date +%s%N
+}
+
+timer_start() {
+  timer_start=${timer_start:-$(timer_now)}
+}
+
+timer_stop() {
+  local delta_us=$((($(timer_now) - $timer_start) / 1000))
+  local us=$((delta_us % 1000))
+  local ms=$(((delta_us / 1000) % 1000))
+  local s=$(((delta_us / 1000000) % 60))
+  local m=$(((delta_us / 60000000) % 60))
+  local h=$((delta_us / 3600000000))
+
+  # Goal: always show around 3 digits of accuracy
+  if ((h > 0)); then timer_show=${h}h${m}m
+  elif ((m > 0)); then timer_show=${m}m${s}s
+  elif ((s >= 10)); then timer_show=${s}.$((ms / 100))s
+  elif ((s > 0)); then timer_show=${s}.$(printf %03d $ms)s
+  elif ((ms >= 100)); then timer_show=${ms}ms
+  elif ((ms > 0)); then timer_show=${ms}.$((us / 100))ms
+  else timer_show=${us}us
+  fi
+  unset timer_start
+}
+
+trap 'timer_start' DEBUG
+
+PROMPT_COMMAND=__prompt_command
+
+# Kubernetes prompt script I found. Commented it out for now.
+# source $HOME/.dotfiles/lib/kube-ps1.sh
+
+function __git_color {
+  local git_status="$(git status --porcelain  2> /dev/null | wc -l)"
+
+  if (( $git_status > 0)); then
+    echo -e "\e[38;5;220m" 
+  else
+    echo -e "\e[38;5;76m"
+  fi
+}
+
+function __git_branch {
+  local git_status="$(git status 2> /dev/null)"
+  local on_branch="On branch ([^${IFS}]*)"
+  local on_commit="HEAD detached at ([^${IFS}]*)"
+
+  if [[ $git_status =~ $on_branch ]]; then
+    local branch=${BASH_REMATCH[1]}
+    echo "$SEP🌳 $(__git_color)$branch"
+  elif [[ $git_status =~ $on_commit ]]; then
+    local commit=${BASH_REMATCH[1]}
+    echo "$SEP📜 $(__git_color)$commit"
+  fi
+}
+
+function __serverLocation {
+  # Work out where we are running
+  where="Some Linux system 🤷"
+  if [[ $(grep -oE 'gcc version ([0-9]+)' /proc/version | awk '{print $3}') -gt 5 ]] && [[ ! -z $WSL_INTEROP ]]; then where="WSL v2 💚";
+  elif [[ $(grep -oE 'gcc version ([0-9]+)' /proc/version | awk '{print $3}') -lt 5 ]]; then where="WSL v1 💙";
+  elif [[ ! -z $ACC_TERM_ID ]]; then where="Azure Cloud Shell ($ACC_LOCATION)\e[37m☁"; 
+  elif [[ -f /.dockerenv ]]; then where="Docker container 📦"; 
+  elif [[ ! -z $REMOTE_CONTAINERS_IPC ]]; then where="Devcontainer 💻"; 
+  elif [[ "$(lsb_release -i)" =~ "Raspbian" ]]; then where="Raspberry Pi 🍇"; 
+  elif [[ "$(lsb_release -i)" =~ "Ubuntu" ]]; then where="Ubuntu 🐧"; fi
+  echo $where
+}
+
+function __azure_sub {
+  # Don't use az account show as it's slow
+  # We look directly into the cached config in ~/.azure
+#  regex='=\s(.*?)'
+#  if [[ -f $(which jq) && -f "$HOME/.azure/clouds.config" && $(cat $HOME/.azure/clouds.config) =~ $regex ]]; then
+#    azsub=$(cat $HOME/.azure/azureProfile.json | jq -r ".subscriptions[] | select(.id==\"${BASH_REMATCH[1]}\").name")
+#    echo "$SEP\e[38;5;15m⛈🌦 \e[38;5;87m$DEV_ENVIRONMENT"
+#  fi
+if [[ ! -z $DEV_ENVIRONMENT ]]; then  echo "$SEP\e[38;5;15m☁️ \e[38;5;87m$DEV_ENVIRONMENT"; fi
+}
+
+function __docker_context {
+  if [[ ! -z $DOCKER_CONTEXT ]]; then  echo "$SEP\e[38;5;15m🐋 \e[38;5;87m$DOCKER_CONTEXT"; fi
+}
+
+SEP=" \e[94m┃ "
+
+# Show timestamp on the right hand side
+# source: https://superuser.com/questions/187455/right-align-part-of-prompt/1203400#1203400
+# Create a string like:  "[ 16:06:06 ]" with time in RED.
+# Strip ANSI commands before counting length
+# From: https://www.commandlinefu.com/commands/view/12043/remove-color-special-escape-ansi-codes-from-text-with-sed
+__prompt_command()
+{
+  GreyBG='\e[48;5;237m'
+#  Green='\[\e[00;22m\]'
+  Green='\e[38;5;46m'
+#  White='\[\e[01;37m\]'
+  White='\e[38;5;15m'
+#  Cyan='\[\e[00;36m\]'
+  Cyan='\e[38;5;36m'
+#  Yellow='\[\e[00;33m\]'
+  Yellow='\e[38;5;3m'
+#  LightBlue='\[\e[00;94m\]'
+  LightBlue='\e[38;5;45m'
+  Blue='\e[38;5;26m'
+  Reset='\e[0m'
+
+  # printf -v PS1RHS "\e[0m[ \e[1;31m%(%H:%M:%S)T \e[0m]" -1 # -1 is current time
+  printf -v PS1RHS "\e[48;5;237m\e[38;5;255m[ \e[38;5;9m%(%H:%M:%S)T \e[38;5;255m]" -1 # -1 is current time
+  PS1RHS_stripped=$(sed "s,\x1B\[[0-9;]*[a-zA-Z],,g" <<<"$PS1RHS")
+
+# Reference: https://en.wikipedia.org/wiki/ANSI_escape_code
+  Save='\e[s' # Save cursor position
+  Rest='\e[u' # Restore cursor to save point
+
+  # Add the elapsed time and current date
+  timer_stop
+
+# Save cursor position, jump to right hand edge, then go left N columns where
+# N is the length of the printable RHS string. Print the RHS string, then
+# return to the saved position and print the LHS prompt.
+
+# Note: "\[" and "\]" are used so that bash can calculate the number of
+# printed characters so that the prompt doesn't do strange things when
+# editing the entered text.
+  PS1="\[${Save}\e[${COLUMNS:-$(tput cols)}C\e[${#PS1RHS_stripped}D${PS1RHS}${Rest}\]"
+
+  # show last command execution time
+  PS1+="$GreyBG$LightBlue[⌚️${timer_show}]"
+  # show user@host
+  PS1+="$Blue $(__serverLocation) $Green\u$White@$Cyan\h"
+  # show current directory
+  PS1+=" 📂 $Yellow\W"
+  # show docker context
+  PS1+="$(__docker_context)"  
+
+  # If wide enough show Azure subscription 
+  if (( $(tput cols) > 80 )); then
+      PS1+="$(__azure_sub) "
+      if [ -f "$HOME/.kube/config" ]; then
+      PS1+="$(kube_ps1)"
+      fi
+  fi
+
+# Add git details
+  PS1+="$(__git_branch) \e[0m\e[38;5;22m"
+  PS1+="$Reset \n$ "
+}

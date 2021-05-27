@@ -1,0 +1,13 @@
+[all:vars]
+ansible_user=nginxAdmin
+ansible_ssh_private_key_file=~/.ssh/vm_ssh
+ansible_port=22
+
+[ubuntu]
+# node1 ansible_host={{IP}}
+
+[centos]
+node2 ansible_host={{IP}}
+
+[redhat]
+# node3 ansible_host={{IP}}

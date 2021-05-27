@@ -1,0 +1,7 @@
+https://releases.hashicorp.com/terraform-provider-aws/3.38.0/terraform-provider-aws_3.38.0_linux_amd64.zip
+https://releases.hashicorp.com/terraform-provider-azurerm/2.57.0/terraform-provider-azurerm_2.57.0_linux_amd64.zip
+https://releases.hashicorp.com/terraform-provider-google/3.66.1/terraform-provider-google_3.66.1_linux_amd64.zip
+https://releases.hashicorp.com/terraform-provider-local/2.1.0/terraform-provider-local_2.1.0_linux_amd64.zip
+https://releases.hashicorp.com/terraform-provider-null/3.1.0/terraform-provider-null_3.1.0_linux_amd64.zip
+https://releases.hashicorp.com/terraform-provider-random/3.1.0/terraform-provider-random_3.1.0_linux_amd64.zip
+https://releases.hashicorp.com/terraform-provider-template/2.2.0/terraform-provider-template_2.2.0_linux_amd64.zip

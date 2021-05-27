@@ -1,0 +1,28 @@
+---
+- name: ensure nginx is at the latest version
+  apt: 
+    name: nginx 
+    state: latest
+
+- name: start nginx
+  service:
+    name: nginx
+    state: started
+
+- name: Copy Logo
+  copy:
+    src: Docker2021-logo.png
+    dest: /var/www/html/
+    group: root
+    owner: root 
+
+- name: copy new index.html
+  template:
+    src: index.html.j2
+    dest: /var/www/html/index.nginx-debian.html
+    group: root
+    owner: root
+  vars:
+    message: DockerCon2021
+  notify:
+    - restart nginx

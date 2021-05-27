@@ -1,0 +1,34 @@
+[user]
+	name = Marcelo Zambrana Villarroel
+	email = marcech.am@gmail.com
+[alias]
+	co = checkout
+	com = checkout master
+	cod = checkout dev
+	ci = commit -m
+	st = status
+	br = branch
+  df = diff
+	dfno = diff --name-only master dev
+	dfns = diff --name-status master dev
+  rmt = remote -v
+	pl = pull
+	cl = clone
+	lg = log --graph --date=relative --pretty=tformat:'%Cred%h%Creset -%C(auto)%d%Creset %s %Cgreen(%an %ad)%Creset'
+	ln = log --graph --oneline --all
+	conf = config --global -e
+	cob = checkout -b
+	pom = push -u origin main
+	pod = push -u origin dev
+	save = !git add -A && git commit -m 'SAVEPOINT'
+	la = "!git config -l | grep alias | cut -c 7-"
+[push]
+	default = current
+[color]
+	# Enable colors in color-supporting terminals
+	ui = auto
+[core]
+  autocrlf = input
+  editor = vi
+[init]
+  defaultBranch = main
